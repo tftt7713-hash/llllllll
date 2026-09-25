@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search & History</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #ebeef1;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        /* मुख्य बड़ा वाइट कार्ड जो इमेज में था */
+        .history-card {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .back-btn {
+            background-color: #ffffff;
+            color: #333;
+            border: 1px solid #cbd5e1;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 25px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover { background-color: #f1f5f9; }
+
+        h2 {
+            text-align: center;
+            color: #1e293b;
+            margin-bottom: 35px;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        /* दोनों सर्च बॉक्स आमने-सामने रखने के लिए ग्रिड */
+        .search-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .search-section {
+            background: #e0f2fe; /* इमेज जैसा हल्का ब्लू/सॉफ्ट बैकग्राउंड */
+            border: 1px solid #bae6fd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .search-section h3 {
+            font-size: 15px;
+            color: #0369a1;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex-grow: 1;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+            background: #ffffff;
+        }
+
+        button.search-btn {
+            background-color: #0f172a;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* ब्लैक हेडिंग पट्टी जो इमेज में थी */
+        .result-header-bar {
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        /* इमेज वाले सुंदर वाइट लिस्ट कार्ड्स */
+        .result-item {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-left: 5px solid #10b981; /* हरा लेफ्ट बॉर्डर */
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .result-item .primary-text {
+            font-weight: 500;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-item .qty-badge {
+            color: #334155;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .no-data {
+            text-align: center;
+            color: #94a3b8;
+            padding: 30px;
+            font-size: 16px;
+            background: #fff;
+            border: 1px dashed #cbd5e1;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="history-card">
+        <button class="back-btn" onclick="window.location.href='index.html'">Back to Billing</button>
+        <h2>🔍 Search & History</h2>
+
+        <div class="search-grid">
+            <!-- 1. कस्टमर सर्च बॉक्स -->
+            <div class="search-section">
+                <h3>Search by Customer Name</h3>
+                <div class="input-row">
+                    <input type="text" id="custSearchInput" placeholder="Dinesh Bhai">
+                    <button class="search-btn" onclick="searchByCustomer()">Search</button>
+                </div>
+            </div>
+
+            <!-- 2. आइटम सर्च बॉक्स -->
+            <div class="search-section">
+                <h3>Search by Item Name</h3>
+                <div class="input-row">
+                    <input type="text" id="itemSearchInput" placeholder="Dashang Dhoop">
+                    <button class="search-btn" onclick="searchByItem()">Search</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- रिजल्ट्स पट्टी और लिस्ट -->
+        <div id="resultContainer" style="display: none;">
+            <div class="result-header-bar" id="resultHeading">Results</div>
+            <div id="resultsList"></div>
+        </div>
+    </div>
+
+    <script>
+        function getBills() {
+            return JSON.parse(localStorage.getItem('allBills')) || [];
+        }
+
+        function searchByCustomer() {
+            const query = document.getElementById('custSearchInput').value.trim().toLowerCase();
+            const allBills = getBills();
+            const listDiv = document.getElementById('resultsList');
+            const container = document.getElementById('resultContainer');
+            
+            if(!query) { alert("कृपया कस्टमर का नाम डालें!"); return; }
+            document.getElementById('itemSearchInput').value = '';
+            
+            const filtered = allBills.filter(bill => bill.customerName.toLowerCase().includes(query));
+            
+            container.style.display = "block";
+            document.getElementById('resultHeading').innerText = `Results for "${document.getElementById('custSearchInput').value}":`;
+            listDiv.innerHTML = "";
+
+            if(filtered.length === 0) {
+                listDiv.innerHTML = `<div class="no-data">कोई डेटा नहीं मिला।</div>`;
+                return;
+            }
+
+            filtered.forEach(bill => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'result-item';
+                itemDiv.innerHTML = `
+                    <span class="primary-text">📦 ${bill.itemName}</span>
+                    <span class="qty-badge">Qty: ${bill.quantity}</span>
+                `;
+                listDiv.appendChild(itemDiv);
+            });
+        }
+
+        function searchByItem() {
+            const query = document.getElementById('itemSearchInput').value.trim().toLowerCase();
+            const allBills = getBills();
+            const listDiv = document.getElementById('resultsList');
+            const container = document.getElementById('resultContainer');
+            
+            if(!query) { alert("कृपया आइटम का नाम डालें!"); return; }
+            document.getElementById('custSearchInput').value = '';
+
+            const filtered = allBills.filter(bill => bill.itemName.toLowerCase().includes(query));
+            
+            container.style.display = "block";
+            document.getElementById('resultHeading').innerText = `Results for "${document.getElementById('itemSearchInput').value}":`;
+            listDiv.innerHTML = "";
+
+            if(filtered.length === 0) {
+                listDiv.innerHTML = `<div class="no-data">कोई डेटा नहीं मिला।</div>`;
+                return;
+            }
+
+            filtered.forEach(bill => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'result-item';
+                itemDiv.innerHTML = `
+                    <span class="primary-text">👤 ${bill.customerName}</span>
+                    <span class="qty-badge">Qty: ${bill.quantity}</span>
+                `;
+                listDiv.appendChild(itemDiv);
+            });
+        }
+    </script>
+</body>
+</html>
