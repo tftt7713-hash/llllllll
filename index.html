@@ -27,7 +27,7 @@
             border-radius: 16px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.05);
             width: 100%;
-            max-width: 550px;
+            max-width: 650px;
             border: 1px solid #eef2f5;
         }
 
@@ -50,7 +50,7 @@
             font-size: 14px;
         }
 
-        /* आइटम और प्राइस का कंबाइंड बॉक्स (एक ही लगेगा, बीच में पतली लाइन) */
+        /* थ्री-इन-वन कंबाइंड बॉक्स */
         .combined-container {
             display: flex;
             border: 2px solid #e2e8f0;
@@ -65,22 +65,16 @@
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
 
-        .combined-box-left {
-            flex: 3;
-        }
+        .box-item { flex: 2.5; }
+        .box-qty { flex: 1.5; }
+        .box-price { flex: 1.5; }
 
-        /* बीच की पतली रेखा */
         .combined-divider {
             width: 1px;
             background-color: #cbd5e1;
             margin: 10px 0;
         }
 
-        .combined-box-right {
-            flex: 1.5;
-        }
-
-        /* कंबाइंड बॉक्स के अंदर के टेक्स्टएरिया की स्टाइल */
         .combined-container textarea {
             width: 100%;
             border: none;
@@ -92,8 +86,7 @@
             line-height: 1.6;
         }
 
-        /* नॉर्मल इनपुट इनपुट (कस्टमर और क्वांटिटी के लिए) */
-        input, .normal-textarea {
+        input {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e2e8f0;
@@ -101,11 +94,9 @@
             font-size: 15px;
             transition: all 0.3s ease;
             outline: none;
-            resize: none;
-            line-height: 1.6;
         }
 
-        input:focus, .normal-textarea:focus {
+        input:focus {
             border-color: #4f46e5;
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
@@ -180,27 +171,27 @@
             <input type="text" id="customerName" placeholder="Enter customer name">
         </div>
 
-        <!-- आइटम और प्राइस का कंबाइंड सेक्शन (अगल-बगल, बीच में सिर्फ एक लाइन) -->
+        <!-- थ्री-इन-वन कंबाइंड सेक्शन -->
         <div class="input-group">
-            <label>Items & Price per Item</label>
+            <label>Bill Details (Items, Quantities & Prices)</label>
             <div class="combined-container">
-                <!-- लेफ्ट साइड: आइटम लिस्ट -->
-                <div class="combined-box-left">
-                    <textarea id="itemsList" rows="5" placeholder="1. Dashang Dhoop&#10;2. Sambrani" oninput="syncInputs()"></textarea>
+                <!-- 1. आइटम लिस्ट -->
+                <div class="box-item">
+                    <textarea id="itemsList" rows="6" placeholder="1. Dashang Dhoop" oninput="syncAllInputs()" onkeydown="handleEnterKey(event)"></textarea>
                 </div>
-                <!-- बीच की रेखा -->
+                <!-- पहली रेखा -->
                 <div class="combined-divider"></div>
-                <!-- राइट साइड: प्राइस लिस्ट (यह ऑटोमैटिक नंबर लिखेगा) -->
-                <div class="combined-box-right">
-                    <textarea id="pricesList" rows="5" placeholder="1. 150&#10;2. 80" oninput="calculateTotal()"></textarea>
+                <!-- 2. क्वांटिटी लिस्ट -->
+                <div class="box-qty">
+                    <textarea id="quantitiesList" rows="6" placeholder="1. 500gm" oninput="calculateTotal()"></textarea>
+                </div>
+                <!-- दूसरी रेखा -->
+                <div class="combined-divider"></div>
+                <!-- 3. प्राइस लिस्ट -->
+                <div class="box-price">
+                    <textarea id="pricesList" rows="6" placeholder="1. 150" oninput="calculateTotal()"></textarea>
                 </div>
             </div>
-        </div>
-
-        <!-- क्वांटिटी नीचे (gm, kg, ml के लिए) -->
-        <div class="input-group">
-            <label for="quantitiesList">Quantities (Line by Line)</label>
-            <textarea id="quantitiesList" class="normal-textarea" rows="3" placeholder="1. 500gm&#10;2. 2kg" oninput="calculateTotal()"></textarea>
         </div>
 
         <!-- टोटल अमाउंट -->
@@ -216,53 +207,74 @@
     </div>
 
     <script>
-        // आइटम बॉक्स में नंबर लिखते ही प्राइस बॉक्स में ऑटोमैटिक नंबर जनरेट करने का जादुई लॉजिक
-        function syncInputs() {
+        // Enter दबाने पर अगला नंबर डालने का लॉजिक
+        function handleEnterKey(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const itemsList = document.getElementById('itemsList');
+                const text = itemsList.value;
+                const lines = text.split('\n');
+                
+                const nextNumber = lines.length + 1;
+                
+                if (text.trim() === "") {
+                    itemsList.value = "1. ";
+                } else {
+                    itemsList.value = text + "\n" + nextNumber + ". ";
+                }
+                
+                syncAllInputs();
+            }
+        }
+
+        // सभी बॉक्स में नंबर सिंक करने का लॉजिक
+        function syncAllInputs() {
             const itemsList = document.getElementById('itemsList');
+            const quantitiesList = document.getElementById('quantitiesList');
             const pricesList = document.getElementById('pricesList');
             
             const itemLines = itemsList.value.split('\n');
+            const qtyLines = quantitiesList.value.split('\n');
             const priceLines = pricesList.value.split('\n');
             
+            let newQtyValue = [];
             let newPriceValue = [];
             
             itemLines.forEach((line, index) => {
-                // चेक करना कि लाइन में कोई नंबर (जैसे 1. या 2.) है या नहीं
                 const match = line.match(/^([0-9]+)\s*[\.\-]?/);
+                let numStr = match ? match[1] : (index + 1);
                 
-                if (match) {
-                    const num = match[1]; // नंबर निकालना (1, 2 आदि)
+                if (line.trim() !== "") {
+                    let existingQty = "";
+                    if (qtyLines[index]) {
+                        existingQty = qtyLines[index].replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
+                    }
+                    newQtyValue.push(`${numStr}. ${existingQty}`);
                     
-                    // अगर उस लाइन में पहले से यूजर ने कोई प्राइस लिख रखा है, तो उसे वैसे ही रहने देंगे
                     let existingPrice = "";
                     if (priceLines[index]) {
                         existingPrice = priceLines[index].replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
                     }
-                    
-                    newPriceValue.push(`${num}. ${existingPrice}`);
-                } else if (line.trim() !== "") {
-                    // अगर यूजर ने नंबर नहीं लिखा पर टेक्स्ट लिखा है, तो लाइन इंडेक्स के हिसाब से नंबर दे देंगे
-                    let existingPrice = "";
-                    if (priceLines[index]) {
-                        existingPrice = priceLines[index].replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
-                    }
-                    newPriceValue.push(`${index + 1}. ${existingPrice}`);
+                    newPriceValue.push(`${numStr}. ${existingPrice}`);
                 } else {
+                    newQtyValue.push("");
                     newPriceValue.push("");
                 }
             });
             
-            // प्राइस वाले बॉक्स को नए नंबरों के साथ अपडेट करना
+            quantitiesList.value = newQtyValue.join('\n');
             pricesList.value = newPriceValue.join('\n');
             calculateTotal();
         }
 
-        // कैलकुलेशन के लिए सिर्फ नंबर छानने का फंक्शन
+        // बेहतर नंबर फिल्टरिंग लॉजिक (ताकि कैलकुलेशन कभी फेल न हो)
         function cleanNumber(text) {
             if (!text) return 0;
-            let clean = text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim(); 
-            let num = parseFloat(clean.replace(/[^0-9\.]/g, '')) || 0; 
-            return num;
+            // पहले आगे का "1. " या "2. " हटाता है
+            let clean = text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
+            // फिर टेक्स्ट में से सिर्फ पहला नंबर/डेसिमल निकालता है (जैसे 500gm से 500)
+            let match = clean.match(/[0-9.]+/);
+            return match ? parseFloat(match[0]) : 0;
         }
 
         function cleanText(text) {
@@ -270,26 +282,23 @@
             return text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
         }
 
+        // लाइव टोटल कैलकुलेट करने का सही फंक्शन
         function calculateTotal() {
-            const itemsLines = document.getElementById('itemsList').value.split('\n').filter(l => l.trim());
-            const pricesLines = document.getElementById('pricesList').value.split('\n').filter(l => l.trim());
-            const qtyLines = document.getElementById('quantitiesList').value.split('\n').filter(l => l.trim());
+            const itemsLines = document.getElementById('itemsList').value.split('\n');
+            const pricesLines = document.getElementById('pricesList').value.split('\n');
+            const qtyLines = document.getElementById('quantitiesList').value.split('\n');
 
             let total = 0;
             
             itemsLines.forEach((line, index) => {
+                if (line.trim() === "") return;
+                
+                // प्राइस बॉक्स से कीमत निकालना
                 const price = cleanNumber(pricesLines[index]);
-                const qty = cleanNumber(qtyLines[index]) || 1; 
+                
+                // क्वांटिटी बॉक्स से नंबर निकालना (जैसे 500gm या 2kg से 500 या 2)
+                let qty = cleanNumber(qtyLines[index]);
+                if (qty === 0) qty = 1; // अगर कुछ न लिखा हो तो डिफ़ॉल्ट 1 मानेगा
+                
                 total += (price * qty);
             });
-
-            document.getElementById('totalAmount').innerText = '₹' + total.toFixed(2);
-        }
-
-        function saveBill() {
-            const name = document.getElementById('customerName').value.trim();
-            const itemsLines = document.getElementById('itemsList').value.split('\n').filter(l => l.trim());
-            const pricesLines = document.getElementById('pricesList').value.split('\n').filter(l => l.trim());
-            const qtyLines = document.getElementById('quantitiesList').value.split('\n').filter(l => l.trim());
-
-            if (!name || itemsLines.length === 0) {
