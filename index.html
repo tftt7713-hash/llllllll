@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Bill Counter</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .bill-card {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            width: 100%;
+            max-width: 550px;
+            border: 1px solid #eef2f5;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        /* बगल में रखने के लिए रो लेआउट */
+        .input-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .flex-2 { flex: 2; }
+        .flex-1 { flex: 1; }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+            resize: none;
+        }
+
+        input:focus, textarea:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .total-box {
+            background-color: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 25px;
+            margin-bottom: 25px;
+        }
+
+        .total-label {
+            font-size: 14px;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .total-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #10b981;
+            margin-top: 5px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .left-action-btn {
+            background-color: #64748b;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 15px;
+            cursor: pointer;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .left-action-btn:hover { background-color: #475569; }
+
+        .save-btn {
+            flex-grow: 1;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+        }
+
+        .save-btn:hover { background-color: #4338ca; }
+    </style>
+</head>
+<body>
+
+    <div class="bill-card">
+        <h2>🧾 New Bill Entry</h2>
+        
+        <!-- कस्टमर का नाम -->
+        <div class="input-group">
+            <label for="customerName">Customer Name</label>
+            <input type="text" id="customerName" placeholder="Enter customer name">
+        </div>
+
+        <!-- आइटम और प्राइस बगल-बगल में -->
+        <div class="input-row">
+            <div class="flex-2">
+                <label for="itemsList">Items (1 to 9 Lines)</label>
+                <textarea id="itemsList" rows="4" placeholder="1. Dashang Dhoop&#10;2. Sambrani" oninput="calculateTotal()"></textarea>
+            </div>
+            <div class="flex-1">
+                <label for="pricesList">Price per Item</label>
+                <textarea id="pricesList" rows="4" placeholder="1. 150&#10;2. 200" oninput="calculateTotal()"></textarea>
+            </div>
+        </div>
+
+        <!-- क्वांटिटी नीचे (टेक्स्ट बॉक्स - gm, kg, ml के लिए) -->
+        <div class="input-group">
+            <label for="quantitiesList">Quantities (Lines for each item, e.g., 500gm, 2kg)</label>
+            <textarea id="quantitiesList" rows="3" placeholder="1. 500gm&#10;2. 2kg" oninput="calculateTotal()"></textarea>
+        </div>
+
+        <!-- टोटल अमाउंट -->
+        <div class="total-box">
+            <div class="total-label">Total Amount</div>
+            <div class="total-amount" id="totalAmount">₹0.00</div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="left-action-btn" id="leftBtn" onclick="window.location.href='history.html'">View History</button>
+            <button class="save-btn" onclick="saveBill()">Save Bill</button>
+        </div>
+    </div>
+
+    <script>
+        // नंबर और टेक्स्ट को अलग करके सिर्फ नंबर निकालने का फंक्शन (कैलकुलेशन के लिए)
+        function cleanNumber(text) {
+            if (!text) return 0;
+            let clean = text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim(); // "1. 150" -> "150"
+            let num = parseFloat(clean.replace(/[^0-9\.]/g, '')) || 0; // "500gm" -> 500
+            return num;
+        }
+
+        // टेक्स्ट से साफ़ नाम या क्वांटिटी निकालने का फंक्शन
+        function cleanText(text) {
+            if (!text) return "";
+            return text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
+        }
+
+        function calculateTotal() {
+            const itemsLines = document.getElementById('itemsList').value.split('\n').filter(l => l.trim());
+            const pricesLines = document.getElementById('pricesList').value.split('\n').filter(l => l.trim());
+            const qtyLines = document.getElementById('quantitiesList').value.split('\n').filter(l => l.trim());
+
+            let total = 0;
+            
+            itemsLines.forEach((line, index) => {
+                const price = cleanNumber(pricesLines[index]);
+                const qty = cleanNumber(qtyLines[index]) || 1; // अगर सिर्फ gm लिखा हो या नंबर न हो तो 1 मानेगा
+                total += (price * qty);
+            });
+
+            document.getElementById('totalAmount').innerText = '₹' + total.toFixed(2);
+        }
+
+        function saveBill() {
+            const name = document.getElementById('customerName').value.trim();
+            const itemsLines = document.getElementById('itemsList').value.split('\n').filter(l => l.trim());
+            const pricesLines = document.getElementById('pricesList').value.split('\n').filter(l => l.trim());
+            const qtyLines = document.getElementById('quantitiesList').value.split('\n').filter(l => l.trim());
+
+            if (!name || itemsLines.length === 0) {
+                alert("कृपया कम से कम कस्टमर नाम और आइटम डिटेल्स भरें!");
+                return;
+            }
+
+            let existingBills = JSON.parse(localStorage.getItem('allBills')) || [];
+
+            // हर एक आइटम को अलग से ऐनालाइज करके एरे में स्टोर करना
+            itemsLines.forEach((line, index) => {
+                const itemName = cleanText(line);
+                const itemPrice = cleanText(pricesLines[index]) || "0";
+                const itemQty = cleanText(qtyLines[index]) || "1";
+
+                if (itemName) {
+                    existingBills.push({
+                        customerName: name,
+                        itemName: itemName,
+                        quantity: itemQty, // जैसे 500gm या 2kg स्टोर होगा
+                        price: itemPrice,
+                        date: new Date().toLocaleString()
+                    });
+                }
+            });
+
+            localStorage.setItem('allBills', JSON.stringify(existingBills));
+            alert("सभी आइटम्स सफलतापूर्वक सेव हो गए हैं!");
+
+            // फॉर्म रीसेट
+            document.getElementById('customerName').value = '';
+            document.getElementById('itemsList').value = '';
+            document.getElementById('pricesList').value = '';
+            document.getElementById('quantitiesList').value = '';
+            document.getElementById('totalAmount').innerText = '₹0.00';
+        }
+    </script>
+</body>
+</html>
