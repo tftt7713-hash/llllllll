@@ -42,16 +42,6 @@
             margin-bottom: 20px;
         }
 
-        /* बगल में रखने के लिए रो लेआउट */
-        .input-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .flex-2 { flex: 2; }
-        .flex-1 { flex: 1; }
-
         label {
             display: block;
             margin-bottom: 8px;
@@ -60,18 +50,62 @@
             font-size: 14px;
         }
 
-        input, textarea {
+        /* आइटम और प्राइस का कंबाइंड बॉक्स (एक ही लगेगा, बीच में पतली लाइन) */
+        .combined-container {
+            display: flex;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            background: #ffffff;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .combined-container:focus-within {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .combined-box-left {
+            flex: 3;
+        }
+
+        /* बीच की पतली रेखा */
+        .combined-divider {
+            width: 1px;
+            background-color: #cbd5e1;
+            margin: 10px 0;
+        }
+
+        .combined-box-right {
+            flex: 1.5;
+        }
+
+        /* कंबाइंड बॉक्स के अंदर के टेक्स्टएरिया की स्टाइल */
+        .combined-container textarea {
+            width: 100%;
+            border: none;
+            padding: 12px 15px;
+            font-size: 15px;
+            outline: none;
+            resize: none;
+            background: transparent;
+            line-height: 1.6;
+        }
+
+        /* नॉर्मल इनपुट इनपुट (कस्टमर और क्वांटिटी के लिए) */
+        input, .normal-textarea {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             transition: all 0.3s ease;
             outline: none;
             resize: none;
+            line-height: 1.6;
         }
 
-        input:focus, textarea:focus {
+        input:focus, .normal-textarea:focus {
             border-color: #4f46e5;
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
         }
@@ -146,22 +180,27 @@
             <input type="text" id="customerName" placeholder="Enter customer name">
         </div>
 
-        <!-- आइटम और प्राइस बगल-बगल में -->
-        <div class="input-row">
-            <div class="flex-2">
-                <label for="itemsList">Items (1 to 9 Lines)</label>
-                <textarea id="itemsList" rows="4" placeholder="1. Dashang Dhoop&#10;2. Sambrani" oninput="calculateTotal()"></textarea>
-            </div>
-            <div class="flex-1">
-                <label for="pricesList">Price per Item</label>
-                <textarea id="pricesList" rows="4" placeholder="1. 150&#10;2. 200" oninput="calculateTotal()"></textarea>
+        <!-- आइटम और प्राइस का कंबाइंड सेक्शन (अगल-बगल, बीच में सिर्फ एक लाइन) -->
+        <div class="input-group">
+            <label>Items & Price per Item</label>
+            <div class="combined-container">
+                <!-- लेफ्ट साइड: आइटम लिस्ट -->
+                <div class="combined-box-left">
+                    <textarea id="itemsList" rows="5" placeholder="1. Dashang Dhoop&#10;2. Sambrani" oninput="syncInputs()"></textarea>
+                </div>
+                <!-- बीच की रेखा -->
+                <div class="combined-divider"></div>
+                <!-- राइट साइड: प्राइस लिस्ट (यह ऑटोमैटिक नंबर लिखेगा) -->
+                <div class="combined-box-right">
+                    <textarea id="pricesList" rows="5" placeholder="1. 150&#10;2. 80" oninput="calculateTotal()"></textarea>
+                </div>
             </div>
         </div>
 
-        <!-- क्वांटिटी नीचे (टेक्स्ट बॉक्स - gm, kg, ml के लिए) -->
+        <!-- क्वांटिटी नीचे (gm, kg, ml के लिए) -->
         <div class="input-group">
-            <label for="quantitiesList">Quantities (Lines for each item, e.g., 500gm, 2kg)</label>
-            <textarea id="quantitiesList" rows="3" placeholder="1. 500gm&#10;2. 2kg" oninput="calculateTotal()"></textarea>
+            <label for="quantitiesList">Quantities (Line by Line)</label>
+            <textarea id="quantitiesList" class="normal-textarea" rows="3" placeholder="1. 500gm&#10;2. 2kg" oninput="calculateTotal()"></textarea>
         </div>
 
         <!-- टोटल अमाउंट -->
@@ -177,15 +216,55 @@
     </div>
 
     <script>
-        // नंबर और टेक्स्ट को अलग करके सिर्फ नंबर निकालने का फंक्शन (कैलकुलेशन के लिए)
+        // आइटम बॉक्स में नंबर लिखते ही प्राइस बॉक्स में ऑटोमैटिक नंबर जनरेट करने का जादुई लॉजिक
+        function syncInputs() {
+            const itemsList = document.getElementById('itemsList');
+            const pricesList = document.getElementById('pricesList');
+            
+            const itemLines = itemsList.value.split('\n');
+            const priceLines = pricesList.value.split('\n');
+            
+            let newPriceValue = [];
+            
+            itemLines.forEach((line, index) => {
+                // चेक करना कि लाइन में कोई नंबर (जैसे 1. या 2.) है या नहीं
+                const match = line.match(/^([0-9]+)\s*[\.\-]?/);
+                
+                if (match) {
+                    const num = match[1]; // नंबर निकालना (1, 2 आदि)
+                    
+                    // अगर उस लाइन में पहले से यूजर ने कोई प्राइस लिख रखा है, तो उसे वैसे ही रहने देंगे
+                    let existingPrice = "";
+                    if (priceLines[index]) {
+                        existingPrice = priceLines[index].replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
+                    }
+                    
+                    newPriceValue.push(`${num}. ${existingPrice}`);
+                } else if (line.trim() !== "") {
+                    // अगर यूजर ने नंबर नहीं लिखा पर टेक्स्ट लिखा है, तो लाइन इंडेक्स के हिसाब से नंबर दे देंगे
+                    let existingPrice = "";
+                    if (priceLines[index]) {
+                        existingPrice = priceLines[index].replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
+                    }
+                    newPriceValue.push(`${index + 1}. ${existingPrice}`);
+                } else {
+                    newPriceValue.push("");
+                }
+            });
+            
+            // प्राइस वाले बॉक्स को नए नंबरों के साथ अपडेट करना
+            pricesList.value = newPriceValue.join('\n');
+            calculateTotal();
+        }
+
+        // कैलकुलेशन के लिए सिर्फ नंबर छानने का फंक्शन
         function cleanNumber(text) {
             if (!text) return 0;
-            let clean = text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim(); // "1. 150" -> "150"
-            let num = parseFloat(clean.replace(/[^0-9\.]/g, '')) || 0; // "500gm" -> 500
+            let clean = text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim(); 
+            let num = parseFloat(clean.replace(/[^0-9\.]/g, '')) || 0; 
             return num;
         }
 
-        // टेक्स्ट से साफ़ नाम या क्वांटिटी निकालने का फंक्शन
         function cleanText(text) {
             if (!text) return "";
             return text.replace(/^[0-9]+\s*[\.\-]\s*/, '').trim();
@@ -200,7 +279,7 @@
             
             itemsLines.forEach((line, index) => {
                 const price = cleanNumber(pricesLines[index]);
-                const qty = cleanNumber(qtyLines[index]) || 1; // अगर सिर्फ gm लिखा हो या नंबर न हो तो 1 मानेगा
+                const qty = cleanNumber(qtyLines[index]) || 1; 
                 total += (price * qty);
             });
 
@@ -214,39 +293,3 @@
             const qtyLines = document.getElementById('quantitiesList').value.split('\n').filter(l => l.trim());
 
             if (!name || itemsLines.length === 0) {
-                alert("कृपया कम से कम कस्टमर नाम और आइटम डिटेल्स भरें!");
-                return;
-            }
-
-            let existingBills = JSON.parse(localStorage.getItem('allBills')) || [];
-
-            // हर एक आइटम को अलग से ऐनालाइज करके एरे में स्टोर करना
-            itemsLines.forEach((line, index) => {
-                const itemName = cleanText(line);
-                const itemPrice = cleanText(pricesLines[index]) || "0";
-                const itemQty = cleanText(qtyLines[index]) || "1";
-
-                if (itemName) {
-                    existingBills.push({
-                        customerName: name,
-                        itemName: itemName,
-                        quantity: itemQty, // जैसे 500gm या 2kg स्टोर होगा
-                        price: itemPrice,
-                        date: new Date().toLocaleString()
-                    });
-                }
-            });
-
-            localStorage.setItem('allBills', JSON.stringify(existingBills));
-            alert("सभी आइटम्स सफलतापूर्वक सेव हो गए हैं!");
-
-            // फॉर्म रीसेट
-            document.getElementById('customerName').value = '';
-            document.getElementById('itemsList').value = '';
-            document.getElementById('pricesList').value = '';
-            document.getElementById('quantitiesList').value = '';
-            document.getElementById('totalAmount').innerText = '₹0.00';
-        }
-    </script>
-</body>
-</html>
